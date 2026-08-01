@@ -1,0 +1,43 @@
+VISOR RGB + MÁSCARAS DE SEGMENTACIÓN
+=====================================
+
+Cómo abrir la página
+--------------------
+1. Abre la carpeta `tiles_web`.
+2. Haz doble clic en `index.html` (se abre en tu navegador).
+
+   Se necesita conexión a internet para cargar el mapa Leaflet (CDN) y el
+   fondo de OpenStreetMap. Si no tienes internet, en el control "Capas"
+   elige "Sin fondo".
+
+Si el navegador bloqueara las imágenes al abrir desde file://, usa un
+servidor local:
+
+    python -m http.server 8000 --directory tiles_web
+
+y luego abre en el navegador: http://localhost:8000
+
+Qué puedes hacer
+----------------
+- Mapa con zoom y desplazamiento.
+- Control "Capas" (abajo a la izquierda): activa/desactiva el RGB y la
+  máscara de cada año (2016, 2021, 2023, 2025). Puedes combinar, por
+  ejemplo, la máscara de 2025 sobre el RGB de 2023.
+- Panel "Máscara de segmentación" (arriba a la derecha):
+  * Activar/desactivar la superposición.
+  * Deslizador de opacidad.
+  * Botones de color (rojo, verde, azul, amarillo).
+
+La zona coloreada indica las regiones segmentadas (máscara binaria).
+
+Cómo regenerar las teselas (si cambian las imágenes o máscaras)
+---------------------------------------------------------------
+1. Ten a mano GDAL (aquí se usa el entorno conda `geo`:
+   C:\Users\Usuario\anaconda3\envs\geo).
+2. En `UIS_IMAGENES_PAGE`, ejecuta:
+
+       powershell -ExecutionPolicy Bypass -File generar_tiles.ps1
+
+   Esto rehace las teselas en `tiles_web` a partir de `tiles_<año>` y
+   `masks_<año>`. El color y la opacidad base de la máscara se cambian en
+   el paso 5 del script (script `mask_to_rgba.py`).
