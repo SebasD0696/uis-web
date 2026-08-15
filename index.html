@@ -46,6 +46,24 @@
   }
   #btnMask.off { background: #9e9e9e; }
 
+  #panel .model-btns { display: flex; gap: 4px; margin-top: 4px; }
+  #panel .model-btn {
+    flex: 1;
+    padding: 6px 4px;
+    border: 1px solid #ccc;
+    border-radius: 6px;
+    background: #fff;
+    font-size: 11px;
+    font-weight: 500;
+    cursor: pointer;
+  }
+  #panel .model-btn.active {
+    background: #1976d2;
+    border-color: #1976d2;
+    color: #fff;
+    font-weight: 700;
+  }
+
   #stats {
     position: absolute;
     top: 10px;
@@ -152,6 +170,13 @@
 <div id="topPanels">
 <div id="panel">
   <h3>Máscara de segmentación</h3>
+  <div class="row">
+    <label>Modelo:</label>
+    <div class="model-btns" id="modelBtns">
+      <button type="button" class="model-btn active" data-model="b0">SegFormer B0 (Ours)</button>
+      <button type="button" class="model-btn" data-model="b5">SegFormer B5</button>
+    </div>
+  </div>
   <button id="btnMask">Máscara: activada</button>
   <div class="row">
     <label>Opacidad: <span id="opVal">70%</span></label>
@@ -170,6 +195,7 @@
 
 <div id="stats">
   <h3>Estadísticas de cobertura arbórea</h3>
+  <div class="note" id="statsModel">Modelo: SegFormer B0 (Ours)</div>
   <table>
     <thead><tr><th>Año</th><th>Cobertura</th><th>Área arbolada</th></tr></thead>
     <tbody id="statsBody"></tbody>
@@ -191,11 +217,25 @@
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
   const YEARS = ['2016', '2021', '2023', '2025'];
+  const MODELS = {
+    b0: { label: 'SegFormer B0 (Ours)' },
+    b5: { label: 'SegFormer B5' }
+  };
+  let activeModel = 'b0';
+
   const STATS = {
-    '2016': { gsd_cm: 5.55, arbol_m2: 78972, total_m2: 254263, pct: 31.06 },
-    '2021': { gsd_cm: 5.13, arbol_m2: 74391, total_m2: 256542, pct: 29.00 },
-    '2023': { gsd_cm: 4.89, arbol_m2: 74247, total_m2: 256216, pct: 28.98 },
-    '2025': { gsd_cm: 2.71, arbol_m2: 88973, total_m2: 256338, pct: 34.71 }
+    b0: {
+      '2016': { gsd_cm: 5.55, arbol_m2: 78972, total_m2: 254263, pct: 31.06 },
+      '2021': { gsd_cm: 5.13, arbol_m2: 74391, total_m2: 256542, pct: 29.00 },
+      '2023': { gsd_cm: 4.89, arbol_m2: 74247, total_m2: 256216, pct: 28.98 },
+      '2025': { gsd_cm: 2.71, arbol_m2: 88973, total_m2: 256338, pct: 34.71 }
+    },
+    b5: {
+      '2016': { gsd_cm: 5.55, arbol_m2: 80719, total_m2: 254263, pct: 31.75 },
+      '2021': { gsd_cm: 5.13, arbol_m2: 81734, total_m2: 256542, pct: 31.86 },
+      '2023': { gsd_cm: 4.89, arbol_m2: 82966, total_m2: 256216, pct: 32.38 },
+      '2025': { gsd_cm: 2.71, arbol_m2: 84983, total_m2: 256338, pct: 33.15 }
+    }
   };
   const BOUNDS = {
     '2016': [[7.138961, -73.123408], [7.143090, -73.115698]],
@@ -217,10 +257,16 @@
   const TRANSPARENT = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=';
   const rgbLayers = {};
   const maskLayers = {};
+  const maskLayersB5 = {};
   YEARS.forEach(function (y) {
     rgbLayers[y] = L.tileLayer(y + '/rgb/{z}/{x}/{y}.png?v=2', { minZoom: 10, maxZoom: 20, tms: true, pane: 'rgbPane', errorTileUrl: TRANSPARENT });
     maskLayers[y] = L.tileLayer(y + '/mask/{z}/{x}/{y}.png?v=2', { minZoom: 10, maxZoom: 20, tms: true, pane: 'maskPane', errorTileUrl: TRANSPARENT });
+    maskLayersB5[y] = L.tileLayer(y + '/mask_segformerb5/{z}/{x}/{y}.png?v=1', { minZoom: 10, maxZoom: 20, tms: true, pane: 'maskPane', errorTileUrl: TRANSPARENT });
   });
+
+  function maskLayerFor(y) {
+    return activeModel === 'b5' ? maskLayersB5[y] : maskLayers[y];
+  }
 
   let layerControl = makeLayerControl();
   osm.addTo(map);
@@ -259,10 +305,12 @@
     });
   }
 
-  (function renderStats() {
+  function renderStats() {
     var body = document.getElementById('statsBody');
+    var stats = STATS[activeModel];
+    body.innerHTML = '';
     YEARS.forEach(function (y) {
-      var s = STATS[y];
+      var s = stats[y];
       var tr = document.createElement('tr');
       tr.dataset.year = y;
       tr.innerHTML =
@@ -271,15 +319,17 @@
         '<td>' + s.arbol_m2.toLocaleString('es-CO') + ' m² (' + (s.arbol_m2 / 10000).toFixed(2).replace('.', ',') + ' ha)</td>';
       body.appendChild(tr);
     });
-  })();
+    document.getElementById('statsModel').textContent = 'Modelo: ' + MODELS[activeModel].label;
+    updateYearUI();
+  }
 
   function selectYear(y) {
     if (y === currentYear) return;
     map.removeLayer(rgbLayers[currentYear]);
-    if (maskOn) map.removeLayer(maskLayers[currentYear]);
+    if (maskOn) map.removeLayer(maskLayerFor(currentYear));
     currentYear = y;
     map.addLayer(rgbLayers[y]);
-    if (maskOn) map.addLayer(maskLayers[y]);
+    if (maskOn) map.addLayer(maskLayerFor(y));
     updateYearUI();
   }
 
@@ -291,8 +341,8 @@
 
   function toggleMask(force) {
     maskOn = (force === undefined) ? !maskOn : force;
-    if (maskOn && !map.hasLayer(maskLayers[currentYear])) map.addLayer(maskLayers[currentYear]);
-    if (!maskOn && map.hasLayer(maskLayers[currentYear])) map.removeLayer(maskLayers[currentYear]);
+    if (maskOn && !map.hasLayer(maskLayerFor(currentYear))) map.addLayer(maskLayerFor(currentYear));
+    if (!maskOn && map.hasLayer(maskLayerFor(currentYear))) map.removeLayer(maskLayerFor(currentYear));
     updateMaskBtn();
   }
 
@@ -305,10 +355,33 @@
   function applyMaskOpacity() {
     var v = document.getElementById('opSlider').value / 100;
     document.getElementById('opVal').textContent = Math.round(v * 100) + '%';
-    YEARS.forEach(function (y) { maskLayers[y].setOpacity(v); });
+    YEARS.forEach(function (y) {
+      maskLayers[y].setOpacity(v);
+      maskLayersB5[y].setOpacity(v);
+    });
   }
   document.getElementById('opSlider').addEventListener('input', applyMaskOpacity);
   applyMaskOpacity();
+
+  function setModel(m) {
+    if (m === activeModel) return;
+    var prev = activeModel;
+    activeModel = m;
+    if (maskOn) {
+      var prevLayers = prev === 'b5' ? maskLayersB5 : maskLayers;
+      var newLayers = m === 'b5' ? maskLayersB5 : maskLayers;
+      if (map.hasLayer(prevLayers[currentYear])) map.removeLayer(prevLayers[currentYear]);
+      if (!map.hasLayer(newLayers[currentYear])) map.addLayer(newLayers[currentYear]);
+    }
+    document.querySelectorAll('#modelBtns .model-btn').forEach(function (el) {
+      el.classList.toggle('active', el.dataset.model === activeModel);
+    });
+    renderStats();
+  }
+
+  document.querySelectorAll('#modelBtns .model-btn').forEach(function (el) {
+    el.addEventListener('click', function () { setModel(el.dataset.model); });
+  });
 
   document.querySelectorAll('#swatches .swatch').forEach(function (el) {
     el.addEventListener('click', function () {
@@ -318,7 +391,7 @@
     });
   });
 
-  updateYearUI();
+  renderStats();
   updateMaskBtn();
 </script>
 </body>
