@@ -11,11 +11,14 @@ Disponible en línea en GitHub Pages.
 - **Máscara de segmentación** (arriba derecha): selecciona el modelo
   **SegFormer B0 (Ours)** o **SegFormer B5**, y activar/desactivar, opacidad y color
   (rojo, verde, azul o amarillo).
-- **Estadísticas** (arriba izquierda): % de cobertura arbórea y área arbolada por año,
+- **Estadísticas** (arriba izquierda): incluye el logo del proyecto en tamaño pequeño,
+  % de cobertura arbórea y área arbolada por año,
   calculadas con el GSD real de cada año y referidas al área cubierta por el ortomosaico.
   Se actualizan según el modelo seleccionado.
-- **Control de capas** (abajo): fondo OpenStreetMap o "Sin fondo".
-- En pantallas pequeñas (≤700 px) la interfaz se apila y compacta automáticamente.
+- **Control de capas** (abajo): fondo satelital (Esri) o "Sin fondo".
+- En pantallas pequeñas (≤700 px) las estadísticas y los controles se abren en un panel
+  deslizante (bottom sheet) con botones táctiles de al menos 44 px; la línea de tiempo
+  permanece visible y el mapa usa `100dvh` para evitar saltos con la barra del navegador.
 
 ## Estadísticas de cobertura arbórea
 
@@ -39,21 +42,35 @@ Cobertura sobre el área cubierta por el ortomosaico, según el modelo seleccion
 | 2023 | 4.89 | 32.38 % | 82 966 m² (8.30 ha) |
 | 2025 | 2.71 | 33.15 % | 84 983 m² (8.50 ha) |
 
+### SegFormer B0 v2 (Ours)
+
+Modelo no expuesto en el visor. Las teselas y estadísticas se conservan en el
+repositorio (`mask_segformerb0v2/`, `estadisticas_masks_v2.json`).
+
 ## Estructura
 
 ```
-index.html          # visor Leaflet (todo el CSS/JS inline, CDN de unpkg)
+index.html          # marcado del visor (Leaflet por CDN de unpkg)
+css/styles.css      # estilos base y reglas responsive (escritorio/móvil)
+js/config.js        # años, modelos, estadísticas, bounds y rutas de teselas
+js/map-view.js      # mapa Leaflet, capas y control de capas
+js/stats.js         # tabla de estadísticas
+js/controls.js      # panel de máscara, línea de tiempo y drawer móvil
+js/main.js          # arranque de la aplicación
+logo/               # logo del proyecto (se muestra pequeño en Estadísticas)
 estadisticas.json   # datos de estadísticas calculados (calcular_estadisticas.py)
 LEEME.txt           # notas de uso/regeneración
 <anio>/rgb/         # teselas RGB (PNG, esquema TMS, z10–20)
 <anio>/mask/        # teselas de máscara coloreada SegFormer B0 (PNG, esquema TMS, z10–20)
+<anio>/mask_segformerb0v2/  # teselas de máscara coloreada SegFormer B0 v2 (PNG, esquema TMS, z10–20)
 <anio>/mask_segformerb5/   # teselas de máscara coloreada SegFormer B5 (PNG, esquema TMS, z10–20)
 masks_segformerb5_<anio>/  # máscaras binarias crudas (TIFF) del modelo SegFormer B5
+masks_v2_<anio>/          # máscaras binarias crudas (TIFF) del modelo SegFormer B0 v2
 ```
 
 ## Ejecutar localmente
 
-Requiere internet para el CDN de Leaflet y el fondo OpenStreetMap.
+Requiere internet para el CDN de Leaflet y el fondo satelital.
 
 ```powershell
 python -m http.server 8000 --directory tiles_web
